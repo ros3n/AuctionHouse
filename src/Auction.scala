@@ -1,19 +1,17 @@
 import java.util.concurrent.TimeUnit
 
+import AuctionSearch.Register
+import Seller.AuctionSold
 import akka.actor.Actor
 import akka.event.LoggingReceive
-import scala.collection.mutable.MutableList
 import scala.concurrent.duration._
 import akka.actor.ActorRef
-import akka.actor.ActorSystem
-import akka.actor.Props
-import java.util.Random
 
 object Auction {
 
   sealed trait AuctionMessage
 
-  case class Create(auctionLength: Int) extends AuctionMessage
+  case class Create(name: String, seller: ActorRef, auctionLength: Int) extends AuctionMessage
 
   case class Bid(amount: BigInt) extends AuctionMessage
 
@@ -23,6 +21,8 @@ object Auction {
 
   case object Relist extends AuctionMessage
 
+  case object AskName extends AuctionMessage
+
 }
 
 class Auction extends Actor {
@@ -31,35 +31,39 @@ class Auction extends Actor {
   import context.dispatcher
 
   def uninitialized: Receive = LoggingReceive {
-    case Create(auctionLength) =>
+    case Create(name, seller, auctionLength) =>
+      context.actorSelection("/user/auctionSearch") ! Register(self)
       system.scheduler.scheduleOnce(new FiniteDuration(`auctionLength`, TimeUnit.MILLISECONDS) , self, BidExpire)
-      context become created(`auctionLength`)
+      context become created(`name`, `seller`, `auctionLength`)
   }
 
-  def created(auctionLength: Int): Receive = LoggingReceive {
+  def created(name: String, seller: ActorRef, auctionLength: Int): Receive = LoggingReceive {
     case Bid(amount) =>
-      context become activated(sender(), amount)
+      context become activated(`name`, `seller`, sender(), amount)
     case BidExpire =>
       system.scheduler.scheduleOnce(5000 millis, self, DeleteExpire)
-      context become ignored(`auctionLength`)
+      context become ignored(`name`, `seller`, `auctionLength`)
+    case AskName =>
+      sender() ! `name`
   }
 
-  def ignored(auctionLength: Int): Receive = LoggingReceive {
+  def ignored(name: String, seller: ActorRef, auctionLength: Int): Receive = LoggingReceive {
     case Relist =>
       system.scheduler.scheduleOnce(new FiniteDuration(`auctionLength`, TimeUnit.MILLISECONDS) , self, BidExpire)
-      context become created(`auctionLength`)
+      context become created(`name`, `seller`, `auctionLength`)
     case DeleteExpire =>
       context.stop(self)
   }
 
-  def activated(buyer: ActorRef, currentPrice: BigInt): Receive = LoggingReceive {
+  def activated(name: String, seller: ActorRef, buyer: ActorRef, currentPrice: BigInt): Receive = LoggingReceive {
     case Bid(amount) if amount > `currentPrice` =>
       sender() ! Buyer.BidAccepted
-      context become activated(sender(), amount)
+      context become activated(`name`, `seller`, sender(), amount)
     case Bid(amount) if amount <= `currentPrice` =>
       sender() ! Buyer.BidRejected
     case BidExpire =>
-      `buyer` ! Buyer.Won
+      `seller` ! AuctionSold(`name`)
+      `buyer` ! Buyer.Won(`name`)
       system.scheduler.scheduleOnce(5000 millis, self, DeleteExpire)
       context become sold
   }
