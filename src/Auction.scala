@@ -9,45 +9,6 @@ import akka.actor.ActorSystem
 import akka.actor.Props
 import java.util.Random
 
-object Buyer {
-
-  sealed trait BuyerMessage
-
-  case class Init(auctions: MutableList[ActorRef]) extends BuyerMessage
-
-  case object Bid extends BuyerMessage
-
-  case object BidAccepted extends BuyerMessage
-
-  case object BidRejected extends BuyerMessage
-
-  case object Won extends BuyerMessage
-
-}
-
-class Buyer extends Actor {
-  import Buyer._
-  val rand = new Random()
-
-  def uninitialized: Receive = LoggingReceive {
-    case Init (auctions) =>
-      context become initialized(auctions)
-  }
-
-  def initialized(auctions: MutableList[ActorRef]): Receive = LoggingReceive {
-    case Bid =>
-      val amount = rand.nextInt(100)
-      val index = rand.nextInt(`auctions`.length)
-      `auctions`(index) ! Auction.Bid(amount)
-    case BidAccepted =>
-    case BidRejected =>
-    case Won =>
-      println(self + " won " + sender)
-  }
-
-  def receive = uninitialized
-}
-
 object Auction {
 
   sealed trait AuctionMessage
@@ -109,32 +70,4 @@ class Auction extends Actor {
   }
 
   def receive = uninitialized
-}
-
-object AuctionHouse extends App {
-  val system = ActorSystem("Reactive2")
-  val auction = system.actorOf(Props[Auction], "auction1")
-  val auction2 = system.actorOf(Props[Auction], "auction2")
-  val auction3 = system.actorOf(Props[Auction], "auction3")
-  val buyer1 = system.actorOf(Props[Buyer], "buyer1")
-  val buyer2 = system.actorOf(Props[Buyer], "buyer2")
-  val auctions =  MutableList(auction, auction2, auction3)
-  auction ! Auction.Create(5000)
-  auction2 ! Auction.Create(5000)
-  auction3 ! Auction.Create(5000)
-  Thread.sleep(1000)
-  buyer1 ! Buyer.Init(auctions)
-  buyer2 ! Buyer.Init(auctions)
-  buyer1 ! Buyer.Bid
-  buyer2 ! Buyer.Bid
-  buyer1 ! Buyer.Bid
-  Thread.sleep(1000)
-  buyer2 ! Buyer.Bid
-  buyer1 ! Buyer.Bid
-  buyer2 ! Buyer.Bid
-  buyer1 ! Buyer.Bid
-  buyer2 ! Buyer.Bid
-
-
-  system.awaitTermination()
 }
