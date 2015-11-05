@@ -1,7 +1,7 @@
 import java.util.Random
 
-import akka.actor.{Actor, ActorRef}
-import akka.event.LoggingReceive
+import Buyer.{BuyerData, BuyerState}
+import akka.actor.{FSM, Actor, ActorRef}
 
 import scala.collection.mutable.MutableList
 
@@ -19,27 +19,46 @@ object Buyer {
 
   case object Won extends BuyerMessage
 
+  sealed trait BuyerState
+
+  case object Uninitialized extends BuyerState
+
+  case object Initialized extends BuyerState
+
+  sealed trait BuyerData
+
+  case object UnunitializedD extends BuyerData
+
+  case class InitializedD(auctions: MutableList[ActorRef]) extends BuyerData
+
 }
 
-class Buyer extends Actor {
+class Buyer extends Actor with FSM[BuyerState, BuyerData] {
   import Buyer._
   val rand = new Random()
 
-  def uninitialized: Receive = LoggingReceive {
-    case Init (auctions) =>
-      context become initialized(auctions)
+  startWith(Uninitialized, UnunitializedD)
+
+  when(Uninitialized) {
+    case Event(Init(auctions), _) =>
+      goto(Initialized) using InitializedD(auctions)
   }
 
-  def initialized(auctions: MutableList[ActorRef]): Receive = LoggingReceive {
-    case Bid =>
+  when(Initialized) {
+    case Event(Bid, InitializedD(auctions)) =>
       val amount = rand.nextInt(100)
       val index = rand.nextInt(`auctions`.length)
+      println(self + " bid " + `auctions`(index) + " with " + amount.toString())
       `auctions`(index) ! Auction.Bid(amount)
-    case BidAccepted =>
-    case BidRejected =>
-    case Won =>
+      stay
+    case Event(BidAccepted, _) =>
+      stay
+    case Event(BidRejected, _) =>
+      stay
+    case Event(Won, _) =>
       println(self + " won " + sender)
+      stop()
   }
 
-  def receive = uninitialized
+  initialize()
 }

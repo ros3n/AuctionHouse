@@ -1,21 +1,16 @@
 import java.util.concurrent.TimeUnit
 
-import akka.actor.Actor
-import akka.event.LoggingReceive
-import scala.collection.mutable.MutableList
+import Auction.{AuctionData, AuctionState}
+import akka.actor._
 import scala.concurrent.duration._
-import akka.actor.ActorRef
-import akka.actor.ActorSystem
-import akka.actor.Props
-import java.util.Random
 
 object Auction {
 
   sealed trait AuctionMessage
 
-  case class Create(auctionLength: Int) extends AuctionMessage
+  final case class Create(auctionLength: Int) extends AuctionMessage
 
-  case class Bid(amount: BigInt) extends AuctionMessage
+  final case class Bid(amount: BigInt) extends AuctionMessage
 
   case object BidExpire extends AuctionMessage
 
@@ -23,51 +18,70 @@ object Auction {
 
   case object Relist extends AuctionMessage
 
+
+  sealed trait AuctionState
+
+  case object Created extends AuctionState
+
+  case object Ignored extends AuctionState
+
+  case object Activated extends AuctionState
+
+  case object Uninitialized extends AuctionState
+
+  case object Sold extends AuctionState
+
+
+  sealed trait AuctionData
+
+  case object UninitializedD extends AuctionData
+
+  final case class ActivatedD(buyer: ActorRef, currentPrice: BigInt) extends AuctionData
+
 }
 
-class Auction extends Actor {
+class Auction extends Actor with FSM[AuctionState, AuctionData] {
   import Auction._
-  import context._
-  import context.dispatcher
 
-  def uninitialized: Receive = LoggingReceive {
-    case Create(auctionLength) =>
-      system.scheduler.scheduleOnce(new FiniteDuration(`auctionLength`, TimeUnit.MILLISECONDS) , self, BidExpire)
-      context become created(`auctionLength`)
+  startWith(Uninitialized, UninitializedD)
+
+  when(Uninitialized) {
+    case Event(Create, _) =>
+      goto(Created)
   }
 
-  def created(auctionLength: Int): Receive = LoggingReceive {
-    case Bid(amount) =>
-      context become activated(sender(), amount)
-    case BidExpire =>
-      system.scheduler.scheduleOnce(5000 millis, self, DeleteExpire)
-      context become ignored(`auctionLength`)
+  when(Created, stateTimeout = 5 seconds) {
+    case Event(Bid(amount), _) =>
+      goto(Activated) using ActivatedD(sender(), amount)
+    case Event(StateTimeout, _) =>
+      goto(Ignored)
   }
 
-  def ignored(auctionLength: Int): Receive = LoggingReceive {
-    case Relist =>
-      system.scheduler.scheduleOnce(new FiniteDuration(`auctionLength`, TimeUnit.MILLISECONDS) , self, BidExpire)
-      context become created(`auctionLength`)
-    case DeleteExpire =>
-      context.stop(self)
+  when(Ignored, stateTimeout = 5 seconds) {
+    case Event(Relist, _) =>
+      goto(Created)
+    case Event(StateTimeout, _) =>
+      stop()
   }
 
-  def activated(buyer: ActorRef, currentPrice: BigInt): Receive = LoggingReceive {
-    case Bid(amount) if amount > `currentPrice` =>
-      sender() ! Buyer.BidAccepted
-      context become activated(sender(), amount)
-    case Bid(amount) if amount <= `currentPrice` =>
-      sender() ! Buyer.BidRejected
-    case BidExpire =>
+  when(Activated, stateTimeout = 5 seconds) {
+    case Event(Bid(amount), ActivatedD(buyer, currentPrice)) =>
+      if(amount > `currentPrice`) {
+        sender() ! Buyer.BidAccepted
+        goto(Activated) using ActivatedD(sender(), amount)
+      } else {
+        sender() ! Buyer.BidRejected
+        stay
+      }
+    case Event(StateTimeout, ActivatedD(buyer, currentPrice)) =>
       `buyer` ! Buyer.Won
-      system.scheduler.scheduleOnce(5000 millis, self, DeleteExpire)
-      context become sold
+      goto(Sold)
   }
 
-  def sold: Receive = LoggingReceive {
-    case DeleteExpire =>
-      context.stop(self)
+  when(Sold, stateTimeout = 5 seconds) {
+    case Event(StateTimeout, _) =>
+      stop()
   }
 
-  def receive = uninitialized
+  initialize()
 }

@@ -10,9 +10,9 @@ object AuctionHouse extends App {
   val buyer1 = system.actorOf(Props[Buyer], "buyer1")
   val buyer2 = system.actorOf(Props[Buyer], "buyer2")
   val auctions = MutableList(auction, auction2, auction3)
-  auction ! Auction.Create(5000)
-  auction2 ! Auction.Create(5000)
-  auction3 ! Auction.Create(5000)
+  auction ! Auction.Create
+  auction2 ! Auction.Create
+  auction3 ! Auction.Create
   Thread.sleep(1000)
   buyer1 ! Buyer.Init(auctions)
   buyer2 ! Buyer.Init(auctions)
