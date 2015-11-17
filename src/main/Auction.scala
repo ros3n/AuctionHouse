@@ -1,3 +1,5 @@
+package main
+
 import java.util.concurrent.TimeUnit
 
 import AuctionSearch.Register

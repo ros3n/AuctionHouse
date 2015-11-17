@@ -1,3 +1,5 @@
+package main
+
 import Auction.Create
 import akka.actor.{ActorRefFactory, Props, ActorRef, Actor}
 import akka.event.LoggingReceive

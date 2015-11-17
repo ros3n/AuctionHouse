@@ -1,4 +1,6 @@
-import akka.actor.{ActorRefFactory, Props, ActorSystem}
+package main
+
+import akka.actor.{ActorRefFactory, ActorSystem, Props}
 
 import scala.collection.mutable.MutableList
 

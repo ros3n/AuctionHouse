@@ -1,3 +1,5 @@
+package main
+
 import Auction.AskName
 import akka.actor.{Actor, ActorRef}
 import akka.event.LoggingReceive
