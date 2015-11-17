@@ -1,5 +1,5 @@
 import Auction.Create
-import akka.actor.{Props, ActorRef, Actor}
+import akka.actor.{ActorRefFactory, Props, ActorRef, Actor}
 import akka.event.LoggingReceive
 
 import scala.collection.mutable.MutableList
@@ -11,14 +11,14 @@ object Seller {
   case class AuctionSold(name: String)
 }
 
-class Seller extends Actor {
+class Seller(auctionMaker: ActorRefFactory => ActorRef) extends Actor {
   import Seller._
 
   def uninitialized: Receive = LoggingReceive {
     case Init(auctionNames) =>
       val auctions = MutableList[ActorRef]()
       auctionNames.foreach { name =>
-        val auction = context.actorOf(Props[Auction], name.replaceAll("""\s""", ""))
+        val auction = auctionMaker(context)
         auction ! Create(name, self, 10000)
         auctions += auction
       }
