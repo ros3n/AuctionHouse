@@ -6,6 +6,7 @@ import AuctionSearch.Register
 import Seller.AuctionSold
 import akka.actor.Actor
 import akka.event.LoggingReceive
+import main.Buyer.Gazump
 import scala.concurrent.duration._
 import akka.actor.ActorRef
 
@@ -60,6 +61,7 @@ class Auction extends Actor {
   def activated(name: String, seller: ActorRef, buyer: ActorRef, currentPrice: BigInt): Receive = LoggingReceive {
     case Bid(amount) if amount > `currentPrice` =>
       sender() ! Buyer.BidAccepted
+      `buyer` ! Gazump(amount)
       context become activated(`name`, `seller`, sender(), amount)
     case Bid(amount) if amount <= `currentPrice` =>
       sender() ! Buyer.BidRejected

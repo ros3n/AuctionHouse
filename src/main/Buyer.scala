@@ -18,7 +18,11 @@ object Buyer {
 
   case object Init extends BuyerMessage
 
+  case class InitAggressive(maxAmount: Int) extends BuyerMessage
+
   case object Bid extends BuyerMessage
+
+  case class Gazump(amount: BigInt) extends BuyerMessage
 
   case object BidAccepted extends BuyerMessage
 
@@ -37,6 +41,8 @@ class Buyer extends Actor {
   def uninitialized: Receive = LoggingReceive {
     case Init =>
       context become initialized(MutableList[ActorRef]())
+    case InitAggressive(maxAmount: Int) =>
+      context become initializedAggressive(MutableList[ActorRef](), `maxAmount`)
   }
 
   def initialized(auctions: MutableList[ActorRef]): Receive = LoggingReceive {
@@ -56,6 +62,30 @@ class Buyer extends Actor {
       val result = Await.result(future, timeout.duration).asInstanceOf[MutableList[ActorRef]]
       if(result.length > 0) {
         context become initialized(`auctions` ++ result)
+      }
+  }
+
+  def initializedAggressive(auctions: MutableList[ActorRef], maxAmount: Int): Receive = LoggingReceive {
+    case Bid =>
+      if(`auctions`.length > 0) {
+        val amount = rand.nextInt(100)
+        val index = rand.nextInt(`auctions`.length)
+        `auctions`(index) ! Auction.Bid(amount)
+      }
+    case BidAccepted =>
+    case BidRejected =>
+    case Gazump(amount) =>
+      if (amount < `maxAmount`) {
+        sender() ! Auction.Bid(amount + 1)
+      }
+    case Won(name) =>
+      println(self + " won " + name)
+    case Search(query) =>
+      implicit val timeout = Timeout(5 seconds)
+      val future = context.actorSelection("/user/auctionSearch") ? SearchQuery(query)
+      val result = Await.result(future, timeout.duration).asInstanceOf[MutableList[ActorRef]]
+      if(result.length > 0) {
+        context become initializedAggressive(`auctions` ++ result, `maxAmount`)
       }
   }
 

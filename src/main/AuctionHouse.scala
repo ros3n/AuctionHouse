@@ -15,7 +15,7 @@ object AuctionHouse extends App {
   seller1 ! Seller.Init(MutableList[String]("audi a6 diesel auto"))
   seller1 ! Seller.Init(MutableList[String]("chevy camaro v8 manual"))
   seller2 ! Seller.Init(MutableList[String]("yummy donuts"))
-  buyer1 ! Buyer.Init
+  buyer1 ! Buyer.InitAggressive(100)
   buyer2 ! Buyer.Init
   Thread.sleep(1000)
   buyer1 ! Buyer.Search("audi")
