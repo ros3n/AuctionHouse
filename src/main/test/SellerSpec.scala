@@ -1,5 +1,6 @@
 import akka.actor.{ActorRefFactory, Props, ActorSystem}
 import akka.testkit.{TestProbe, ImplicitSender, TestKit}
+import main.{Auction, Seller}
 import org.scalatest.{BeforeAndAfterAll, WordSpecLike}
 
 import scala.collection.mutable
