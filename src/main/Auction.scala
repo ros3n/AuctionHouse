@@ -6,6 +6,7 @@ import AuctionSearch.Register
 import Seller.AuctionSold
 import akka.actor.Actor
 import akka.event.LoggingReceive
+import main.Notifier.Notify
 import scala.concurrent.duration._
 import akka.actor.ActorRef
 
@@ -41,6 +42,7 @@ class Auction extends Actor {
 
   def created(name: String, seller: ActorRef, auctionLength: Int): Receive = LoggingReceive {
     case Bid(amount) =>
+      context.actorSelection("/user/notifier") ! Notify(self, sender(), amount)
       context become activated(`name`, `seller`, sender(), amount)
     case BidExpire =>
       system.scheduler.scheduleOnce(5000 millis, self, DeleteExpire)
@@ -60,6 +62,7 @@ class Auction extends Actor {
   def activated(name: String, seller: ActorRef, buyer: ActorRef, currentPrice: BigInt): Receive = LoggingReceive {
     case Bid(amount) if amount > `currentPrice` =>
       sender() ! Buyer.BidAccepted
+      context.actorSelection("/user/notifier") ! Notify(self, sender(), amount)
       context become activated(`name`, `seller`, sender(), amount)
     case Bid(amount) if amount <= `currentPrice` =>
       sender() ! Buyer.BidRejected

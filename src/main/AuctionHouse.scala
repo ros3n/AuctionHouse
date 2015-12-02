@@ -1,11 +1,19 @@
 package main
 
 import akka.actor.{ActorRefFactory, ActorSystem, Props}
+import com.typesafe.config.ConfigFactory
 
 import scala.collection.mutable.MutableList
 
 object AuctionHouse extends App {
+
+  val config = ConfigFactory.load()
+  val publisherSystem = ActorSystem("AuctionHouse", config.getConfig("publisherapp").withFallback(config))
+  val publisher = publisherSystem.actorOf(Props[AuctionPublisher], "publisher")
+
+
   val system = ActorSystem("Reactive2")
+  val notifier = system.actorOf(Props[Notifier], "notifier")
   val buyer1 = system.actorOf(Props[Buyer], "buyer1")
   val buyer2 = system.actorOf(Props[Buyer], "buyer2")
   val maker = (f: ActorRefFactory) => f.actorOf(Props[Auction])
