@@ -21,7 +21,7 @@ class SellerSpec extends TestKit(ActorSystem("SellerSpec"))
       val seller = system.actorOf(Props(classOf[Seller], maker), "seller")
       seller ! Seller.Init(mutable.MutableList[String]("yummy donuts"))
 
-      probe.expectMsg(Auction.Create("yummy donuts", seller, 10000))
+      probe.expectMsg(Auction.Create("yummy donuts", seller, 10000, System.currentTimeMillis / 1000))
     }
   }
 }

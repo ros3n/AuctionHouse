@@ -21,7 +21,7 @@ class Seller(auctionMaker: ActorRefFactory => ActorRef) extends Actor {
       val auctions = MutableList[ActorRef]()
       auctionNames.foreach { name =>
         val auction = auctionMaker(context)
-        auction ! Create(name, self, 10000)
+        auction ! Create(name, self, 20000, System.currentTimeMillis)
         auctions += auction
       }
     case AuctionSold(name) =>

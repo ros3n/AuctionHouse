@@ -27,8 +27,8 @@ class AuctionSearchSpec extends TestKit(ActorSystem("AuctionSearchSpec"))
       val auction2 = system.actorOf(Props[Auction], "auction2")
       val seller = TestProbe()
 
-      auction1 ! Create("auction 1 name", seller.ref, 100000)
-      auction2 ! Create("auction 2 name", seller.ref, 100000)
+      auction1 ! Create("auction 1 name", seller.ref, 100000, System.currentTimeMillis / 1000)
+      auction2 ! Create("auction 2 name", seller.ref, 10000, System.currentTimeMillis / 1000)
 
       auctionSearch ! Register(auction1)
       auctionSearch ! Register(auction2)
