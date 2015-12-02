@@ -21,6 +21,7 @@ class AuctionSearch extends Actor {
 
   def searchable(auctions: MutableList[ActorRef]): Receive = LoggingReceive {
     case Register(auction) =>
+      context.actorSelection("/user/auctionSearch") ! "done!"
       context become searchable(`auctions` += auction)
     case SearchQuery(query) =>
       val result = MutableList[ActorRef]()
