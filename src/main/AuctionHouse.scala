@@ -19,7 +19,7 @@ object AuctionHouse extends App {
   val maker = (f: ActorRefFactory) => f.actorOf(Props[Auction])
   val seller1 = system.actorOf(Props(classOf[Seller], maker), "seller1")
   val seller2 = system.actorOf(Props(classOf[Seller], maker), "seller2")
-  val auctionSearch = system.actorOf(Props[AuctionSearch], "auctionSearch")
+  val auctionSearch = system.actorOf(Props[MasterSearch], "auctionSearch")
   seller1 ! Seller.Init(MutableList[String]("audi a6 diesel auto"))
   seller1 ! Seller.Init(MutableList[String]("chevy camaro v8 manual"))
   seller2 ! Seller.Init(MutableList[String]("yummy donuts"))
